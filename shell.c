@@ -2,6 +2,8 @@
 
 uint8_t shell_buff[SHELL_BUF_SIZE];
 uint16_t shell_write_idx = 0;
+uint16_t shell_select_idx = 0;
+
 uint8_t uart_buf_byte;
 
 void shell_split(uint8_t *src, const char *separator, uint8_t **dest, int *num)
@@ -44,55 +46,148 @@ void shell_read_buff()
 	shell_anaysis(argc, argv);
 }
 
+void shell_hardware_put(const char ch[])
+{
+    HAL_UART_Transmit(&UART_DEBUG_HIM, (uint8_t *)ch, strlen(ch), 100);
+}
+
 void shell_put_userinfo()
 {
-	uint8_t info_local[] = USER_LOCAL;
-	uint8_t info_splt[] = USER_SPLT;
-	uint8_t info_name[] = USER_NAME;
-	uint8_t info_end[] = USER_END;
+	shell_hardware_put(USER_LOCAL);
+	shell_hardware_put(USER_SPLT);
+	shell_hardware_put(USER_NAME);
+	shell_hardware_put(USER_END);
+}
 
-	HAL_UART_Transmit(&UART_DEBUG_HIM, (uint8_t *)info_local, strlen((const char *)info_local), 100);
-	HAL_UART_Transmit(&UART_DEBUG_HIM, (uint8_t *)info_splt, strlen((const char *)info_splt), 100);
-	HAL_UART_Transmit(&UART_DEBUG_HIM, (uint8_t *)info_name, strlen((const char *)info_name), 100);
-	HAL_UART_Transmit(&UART_DEBUG_HIM, (uint8_t *)info_end, strlen((const char *)info_end), 100);
+void shell_output_buff()
+{
+	debug_i("\r\n");
+	debug_i(" HEX -> ");
+	for (int i=0; i < shell_write_idx; i++) {
+		debug_i("0x%02x ", shell_buff[i]);
+	} 
+	debug_i("\r\n ASC -> ");
+
+	for (int i=0; i < shell_write_idx; i++) {
+		debug_i("%c", shell_buff[i]);
+	} 
+	debug_i("\r\n");
 }
 
 void shell_put_char(char ch)
 {
-	shell_buff[shell_write_idx++] = (uint8_t) ch;
+	shell_buff[shell_write_idx++] = (uint8_t) ch;	
 	if (ch != '\r') return;
-
-	if (shell_write_idx >=2)
+	if (shell_write_idx >=2 && shell_buff[0] != 0x1b) {
+		shell_output_buff();
 		shell_read_buff();
-	else
-		debug_i("\r\n");
+	}
+	debug_i("\r\n");
 	shell_write_idx = 0;
+	shell_select_idx = 0;
 	shell_put_userinfo();
 }
 
-void shell_hardware_put(char ch[])
+void shell_select_add(char ch) 
 {
-    HAL_UART_Transmit(&UART_DEBUG_HIM, (uint8_t *)ch, strlen(ch), 100);
+	int idx;
+
+	idx = shell_write_idx;
+	for (int i=idx; i>shell_select_idx-1; i--) {
+		shell_buff[i] = shell_buff[i-1];
+	}
+	shell_buff[shell_select_idx-1] = ch;
+	
+	/* delect to the end of line */
+	shell_hardware_put("\x1b[0K");
+	shell_hardware_put("\33[s");
+	for (int i=shell_select_idx-1; i<shell_write_idx; i++) {
+		HAL_UART_Transmit(&UART_DEBUG_HIM, &shell_buff[i], 1, 0x00f);
+	}
+	shell_hardware_put("\33[u");
+	shell_hardware_put("\33[1C"); 
+}
+
+void shell_select_del()
+{
+	int idx;
+
+	idx = shell_select_idx - 1;
+	for (int i=idx; i<shell_write_idx+1; i++) {
+		shell_buff[i] = shell_buff[i+1];
+	}
+	
+	/* delete to the end of line */
+	shell_hardware_put("\33[1D");
+	shell_hardware_put("\x1b[0K");
+	shell_hardware_put("\33[s");
+	for (int i=shell_select_idx - 1; i<shell_write_idx-1; i++) {
+		HAL_UART_Transmit(&UART_DEBUG_HIM, &shell_buff[i], 1, 0x00f);
+	}
+	shell_hardware_put("\33[u");
 }
 
 void shell_ret_char(uint8_t ch)
 {
 	static int state = 0;
 
-	if (state == 2) state = -1;
-	if (ch == '[' && state == 1) state = 2;
-	if (ch == 27  && state == 0)  state = 1;
+	if (state == 2) { 
+		shell_write_idx -=3;
+		switch (ch) {
+			case KEY_UP:
+				shell_hardware_put("key_up!");
+				break;
+			case KEY_DOWN:
+				shell_hardware_put("key_down!");
+				break;
+			case KEY_LEFT:
+				if (shell_select_idx) {
+					shell_hardware_put("\33[1D");
+					shell_select_idx--;
+				}
+				break;
+			case KEY_RIGHT:
+				if (shell_select_idx < shell_write_idx) {
+					shell_hardware_put("\33[1C");
+					shell_select_idx++;
+				}
+				break;
+			default:
+				break;
 
-	if(ch == '\b'){
-		if(shell_write_idx > 0) {
-			shell_hardware_put("\b");
-			shell_hardware_put("\x1b[0K");
-			shell_write_idx -= 2;
+		}
+		state = -1;
+	}
+	if (ch == '[' && state == 1) state = 2;
+	if (ch == 27  && state == 0) state = 1;
+	if (ch == '\b') {
+		if (shell_write_idx > 1) {
+			if (shell_select_idx == (shell_write_idx-1)) {
+				shell_hardware_put("\b");
+				shell_hardware_put("\x1b[0K");
+				shell_write_idx -= 2;
+				shell_select_idx-= 1;
+			} else {
+				if (shell_select_idx > 0) {  
+					shell_select_del();
+					shell_write_idx -= 2;
+					shell_select_idx-= 1;
+				}
+			}
+		} else {
+			shell_write_idx = 0;
+			shell_select_idx = 0;
 		}
 	}
 
-	if (!state && ch > 31 && ch < 127)
-		HAL_UART_Transmit(&UART_DEBUG_HIM, &ch, 1, 100);
+	if (!state && ch > 31 && ch < 127) {
+		shell_select_idx++;
+		if (shell_select_idx < shell_write_idx) {
+			shell_select_add(ch);	
+		} else {
+			HAL_UART_Transmit(&UART_DEBUG_HIM, &ch, 1, 100);
+		}
+	}
 	if (state == -1) state = 0;
 }
 

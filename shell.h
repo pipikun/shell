@@ -13,6 +13,8 @@ void shell_read_buff();
 void shell_put_char(char ch);
 void shell_ret_char(uint8_t ch);
 void shell_float_debug_i(float val);
+void shell_select_add(char ch);
+void shell_select_del();
 int shell_htoi(uint8_t s[]);
 
 

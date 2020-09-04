@@ -20,11 +20,11 @@
         #define SHELL_CMD_SIZE                  256
         #define USER_LOCAL                      "root"
         #define USER_SPLT                       "@"
-        #define USER_NAME                       "carson"
+        #define USER_NAME                       "shell"
         #define USER_END                        ":"
         #define USER_BORD                       "STM32F1xx"
         #define USER_BORD_ID                    "001"
-        #define USER_INFO(u1,u2,u3,u4)          u1##u2##u3##u4
+
 #endif
 
 #if  shell_debug_i
@@ -50,6 +50,11 @@
         #define debug_d(fmt, ...) 
 	#define debug_dln(fmt, ...)
 #endif
+
+#define	KEY_UP					'A'
+#define KEY_DOWN				'B'
+#define KEY_RIGHT				'C'
+#define KEY_LEFT				'D'
 
 
 #endif

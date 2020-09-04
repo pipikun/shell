@@ -12,7 +12,6 @@ shell_call_t func_list[] =
 void shell_help(uint8_t **cmd, uint16_t num)
 {
 	int len;
-	
 	debug_i("Mars Shell Command List:\r\n\r\n");
 	len=(sizeof(func_list)/sizeof(func_list[0]));
 	for (int i=0;i<len;i++) { 
@@ -23,7 +22,6 @@ void shell_help(uint8_t **cmd, uint16_t num)
 void shell_echo(uint8_t **cmd, uint16_t num)
 {
 	int i = 1;
-	
 	while(i <= num-1){ 
 		debug_i("\033[34m%s\033[0m ", cmd[i++]);
 	}
@@ -45,7 +43,6 @@ void shell_clear(uint8_t **cmd, uint16_t num)
 void cmd_anaysis(uint8_t **argv, uint16_t argc)
 {
 	int len=(sizeof(func_list)/sizeof(func_list[0]));
-	
 	debug_i("\r\n");
 	for (int i=0; i<len; i++) {
 		if (shell_cmd_strcmp(func_list[i].name, argv[0]) == 1) {
@@ -54,7 +51,7 @@ void cmd_anaysis(uint8_t **argv, uint16_t argc)
 			return;
 		}
 	}
-	debug_i("\r\nnot find cmd like '\033[36m%s\033[0m'\r\n\r\n", argv[0]);
+	debug_i("\r\nCommand '%s' not found \r\n\r\n", argv[0]);
 }
 
 uint8_t shell_cmd_strcmp(char const *src, uint8_t *tag)
@@ -65,7 +62,7 @@ uint8_t shell_cmd_strcmp(char const *src, uint8_t *tag)
 		tag++;
 	}
 	if (*tag != '\0') return 0;
-
+	
 	return 1;
 }
 
@@ -76,10 +73,10 @@ uint8_t shell_range_addr_spilt(uint8_t *src, uint8_t * buf)
 	uint8_t len = strlen((const char *)src);
 	uint8_t *par[SHELL_CMD_SIZE];
 	int pac;
-
+	
 	for (int i=1; i<len-1; i++) {
 		*sp = src[i];
-		sp++;
+		 sp++;
 	}
 	shell_split(src_t, ":", par, &pac);
 	buf[0] = shell_htoi(par[0]);
@@ -98,16 +95,15 @@ uint8_t shell_range_data_spilt(uint8_t *src, uint16_t *buf)
 
 	for (int i=1; i<len; i++) {
 		*sp = src[i];
-		sp++;
+		 sp++;
 	}
 	shell_split(src_t, ",", par, &pac);
 	for(int i=0; i< pac; i++) {
 		buf[i] = shell_htoi(par[i]);
 		debug_i("data[%d] 0x%04x\r\n",i,buf[i]);
 	}
-
-	debug_i("size:%d\r\n", pac);
 	
+	debug_i("size:%d\r\n", pac);
 	return pac;
 }
 
