@@ -1,6 +1,3 @@
-# shell
-
-# ####
 
 # Micro Shell
 
