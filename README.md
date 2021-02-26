@@ -2,4 +2,10 @@
 
 # ####
 
-如果要使用这个库，实现一个串口接收、发送接口即可。
+# Micro Shell
+
+## Overview
+This is an embedded debugging shell program, only need to achieve a few simple interfaces, you can achieve shell operations, built-in command add mechanism, you can quickly and easily add commands.
+
+## Licence
+    MIT
